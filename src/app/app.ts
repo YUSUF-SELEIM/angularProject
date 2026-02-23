@@ -1,11 +1,10 @@
 import { Component, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-
+import { Slider } from './slider/slider';
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  templateUrl: './app.html',
-  styleUrl: './app.css'
+  standalone: true,
+  imports: [Slider],
+  template: `<app-slider></app-slider>`,
 })
 export class App {
   protected readonly title = signal('angularProject');
