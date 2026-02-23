@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Product } from '../product';
 
@@ -8,34 +8,70 @@ import { Product } from '../product';
   imports: [CommonModule],
   templateUrl: './slider.html',
 })
-export class Slider implements OnInit {
+export class Slider implements OnInit, OnDestroy {
   products: any[] = [];
   currentIndex = 0;
+  private intervalId: any;
 
-  constructor(private Product: Product) {}
-
-  intervalId: any;
+  constructor(
+    private p: Product,
+    private ngZone: NgZone,
+    private cdr: ChangeDetectorRef,
+  ) {}
 
   ngOnInit() {
-    this.Product.getProducts().subscribe((data) => {
+    console.log('Slider initialized');
+    this.p.getProducts().subscribe((data) => {
       this.products = data;
-      this.startAutoSlide();
+
+      if (this.products.length > 0) {
+        this.startAutoSlide();
+      }
     });
   }
 
   startAutoSlide() {
-    this.intervalId = setInterval(() => {
-      if (this.products.length > 0) {
-        this.currentIndex = (this.currentIndex + 1) % this.products.length;
-      }
-    }, 1000);
+    this.ngZone.runOutsideAngular(() => {
+      this.intervalId = setInterval(() => {
+        this.ngZone.run(() => {
+          if (this.products.length > 0) {
+            this.currentIndex = (this.currentIndex + 1) % this.products.length;
+            this.cdr.detectChanges();
+          }
+        });
+      }, 3000);
+    });
   }
 
   goTo(index: number) {
     this.currentIndex = index;
+    this.resetAutoSlide();
+  }
+
+  next() {
+    if (this.products.length > 0) {
+      this.currentIndex = (this.currentIndex + 1) % this.products.length;
+      this.resetAutoSlide();
+    }
+  }
+
+  previous() {
+    if (this.products.length > 0) {
+      this.currentIndex = (this.currentIndex - 1 + this.products.length) % this.products.length;
+      this.resetAutoSlide();
+    }
+  }
+
+  resetAutoSlide() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
+    this.startAutoSlide();
   }
 
   ngOnDestroy() {
-    clearInterval(this.intervalId);
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
   }
 }
