@@ -1,7 +1,6 @@
 # AngularProject
 
-![alt text](image.png)
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.5.
+![alt text](image-1.png)This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.5.
 
 ## Development server
 

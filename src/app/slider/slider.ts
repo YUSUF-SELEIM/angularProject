@@ -1,42 +1,71 @@
-import { Component, OnInit, OnDestroy, NgZone, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, ChangeDetectorRef, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Product } from '../product';
+
+interface SliderProduct {
+  id: number;
+  title: string;
+  price: number;
+  description: string;
+  category: string;
+  image: string;
+  rating: {
+    rate: number;
+    count: number;
+  };
+}
 
 @Component({
   selector: 'app-slider',
   standalone: true,
   imports: [CommonModule],
   templateUrl: './slider.html',
+  styleUrls: ['./slider.css'],
+  styles: [
+    `
+      :host {
+        display: block;
+        width: 100%;
+      }
+    `,
+  ],
 })
 export class Slider implements OnInit, OnDestroy {
-  products: any[] = [];
-  currentIndex = 0;
+  products = signal<SliderProduct[]>([]);
+  currentIndex = signal(0);
   private intervalId: any;
 
   constructor(
-    private p: Product,
     private ngZone: NgZone,
     private cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit() {
     console.log('Slider initialized');
-    this.p.getProducts().subscribe((data) => {
-      this.products = data;
+    this.fetchSliderProducts();
+  }
 
-      if (this.products.length > 0) {
-        this.startAutoSlide();
-      }
-    });
+  private fetchSliderProducts(): void {
+    fetch('https://fakestoreapi.com/products?limit=10')
+      .then((response) => response.json())
+      .then((data: SliderProduct[]) => {
+        this.products.set(data);
+        if (data.length > 0) {
+          this.startAutoSlide();
+        }
+      })
+      .catch((error) => {
+        console.error('Error fetching slider products:', error);
+      });
   }
 
   startAutoSlide() {
     this.ngZone.runOutsideAngular(() => {
       this.intervalId = setInterval(() => {
         this.ngZone.run(() => {
-          if (this.products.length > 0) {
-            this.currentIndex = (this.currentIndex + 1) % this.products.length;
-            this.cdr.detectChanges();
+          const productsLength = this.products().length;
+          if (productsLength > 0) {
+            const nextIndex = (this.currentIndex() + 1) % productsLength;
+            this.currentIndex.set(nextIndex);
           }
         });
       }, 3000);
@@ -44,20 +73,24 @@ export class Slider implements OnInit, OnDestroy {
   }
 
   goTo(index: number) {
-    this.currentIndex = index;
+    this.currentIndex.set(index);
     this.resetAutoSlide();
   }
 
   next() {
-    if (this.products.length > 0) {
-      this.currentIndex = (this.currentIndex + 1) % this.products.length;
+    const productsLength = this.products().length;
+    if (productsLength > 0) {
+      const nextIndex = (this.currentIndex() + 1) % productsLength;
+      this.currentIndex.set(nextIndex);
       this.resetAutoSlide();
     }
   }
 
   previous() {
-    if (this.products.length > 0) {
-      this.currentIndex = (this.currentIndex - 1 + this.products.length) % this.products.length;
+    const productsLength = this.products().length;
+    if (productsLength > 0) {
+      const prevIndex = (this.currentIndex() - 1 + productsLength) % productsLength;
+      this.currentIndex.set(prevIndex);
       this.resetAutoSlide();
     }
   }
