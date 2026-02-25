@@ -1,120 +1,132 @@
-import { Component, signal, effect } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { Slider } from './slider/slider';
-import { CardComponent, type Product } from './card/card';
+import { ProductService } from './services/product.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, Slider, CardComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
-    <div class="container">
-      <section class="slider-section">
-        <app-slider></app-slider>
-      </section>
-
-      <section class="cards-section">
-        <h2>Featured Products</h2>
-        @if (loading()) {
-          <div class="loading">Loading products...</div>
-        } @else {
-          <div class="cards-grid">
-            @for (product of products(); track product.id) {
-              <app-card [product]="product" (onBuy)="handleBuyProduct($event)" />
-            }
-          </div>
-        }
-      </section>
-    </div>
+    <nav class="navbar">
+      <a class="brand" routerLink="/">🛍 Shop</a>
+      <div class="nav-links">
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
+          >Home</a
+        >
+        <a routerLink="/products/add" routerLinkActive="active" class="add-btn">+ Add Product</a>
+      </div>
+      @if (svc.cartItemCount() > 0) {
+        <div class="cart-badge">
+          🛒 {{ svc.cartItemCount() }} items
+          <span class="cart-total">\${{ svc.cartTotal() }}</span>
+        </div>
+      }
+    </nav>
+    <main>
+      <router-outlet />
+    </main>
   `,
   styles: [
     `
-      .container {
-        width: 100%;
+      :host {
         display: flex;
         flex-direction: column;
+        min-height: 100vh;
+        width: 100%;
+        font-family:
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
       }
 
-      .slider-section {
-        width: 100%;
-        padding: 40px 20px;
+      .navbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
         display: flex;
-        justify-content: center;
         align-items: center;
-      }
-
-      app-slider {
-        display: block;
-        width: 100%;
-        max-width: 1200px;
-      }
-
-      .cards-section {
-        width: 100%;
-        padding: 40px 20px;
-        background: #f9f9f9;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-
-      h2 {
-        text-align: center;
-        color: #2c3e50;
-        margin: 0 0 30px 0;
-        font-size: 28px;
-      }
-
-      .loading {
-        text-align: center;
-        padding: 40px;
-        font-size: 18px;
-        color: #666;
-      }
-
-      .cards-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 24px;
-        max-width: 1200px;
-        margin: 0 auto;
-        width: 100%;
+        padding: 16px 28px;
+        height: 60px;
+        background: white;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
       }
 
-      @media (min-width: 768px) {
-        .cards-grid {
-          grid-template-columns: repeat(3, 1fr);
+      .brand {
+        font-size: 20px;
+        font-weight: 800;
+        color: #ff6b6b;
+        text-decoration: none;
+        letter-spacing: -0.5px;
+        margin-right: auto;
+      }
+
+      .nav-links {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .nav-links a {
+        padding: 7px 16px;
+        border-radius: 20px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        color: #555;
+        transition: all 0.2s;
+
+        &:hover {
+          background: #f5f5f5;
+          color: #333;
         }
+        &.active {
+          background: #fff0f0;
+          color: #ff6b6b;
+        }
+        &.add-btn {
+          background: #ff6b6b;
+          color: white;
+        }
+        &.add-btn:hover {
+          background: #ff5252;
+        }
+        &.add-btn.active {
+          background: #ff5252;
+          color: white;
+        }
+      }
+
+      .cart-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #fff0f0;
+        border: 1.5px solid #ffd0d0;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #c62828;
+        white-space: nowrap;
+      }
+
+      .cart-total {
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      main {
+        flex: 1;
+        width: 100%;
+        background: #fafafa;
       }
     `,
   ],
 })
 export class App {
-  protected readonly title = signal('angularProject');
-  protected readonly products = signal<Product[]>([]);
-  protected readonly loading = signal(true);
-
-  constructor() {
-    effect(() => {
-      this.fetchProducts();
-    });
-  }
-
-  private fetchProducts(): void {
-    fetch('https://fakestoreapi.com/products?limit=10')
-      .then((response) => response.json())
-      .then((data: Product[]) => {
-        this.products.set(data);
-        this.loading.set(false);
-      })
-      .catch((error) => {
-        console.error('Error fetching products:', error);
-        this.loading.set(false);
-      });
-  }
-
-  handleBuyProduct(productId: number): void {
-    console.log('Buy product:', productId);
-    alert(`Added product ${productId} to cart!`);
-  }
+  protected svc = inject(ProductService);
 }
