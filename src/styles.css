@@ -49,5 +49,5 @@ app-root.dark-theme,
 /* Apply CSS vars to body background in dark mode */
 body {
   background: var(--bg, #fafafa);
-  color: var(--text, #111);
+  color: var(--text, #111) !important;
 }

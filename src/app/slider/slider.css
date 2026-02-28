@@ -27,7 +27,7 @@
 .slider-title {
   font-size: 20px;
   font-weight: 600;
-  color: #333;
+  color: var(--color);
   margin: 0 0 8px 0;
 }
 

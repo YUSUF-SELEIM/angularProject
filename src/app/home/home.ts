@@ -67,7 +67,6 @@ import { ProductService } from '../services/product.service';
       .cards-section {
         width: 100%;
         padding: 40px 20px;
-        background: #f9f9f9;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -75,7 +74,7 @@ import { ProductService } from '../services/product.service';
 
       h2 {
         text-align: center;
-        color: #2c3e50;
+        color: var(--color);
         margin: 0 0 30px 0;
         font-size: 28px;
       }
@@ -86,7 +85,7 @@ import { ProductService } from '../services/product.service';
         align-items: center;
         gap: 16px;
         padding: 40px;
-        color: #666;
+        color: var(--text, #666);
         font-size: 18px;
       }
 
@@ -108,7 +107,7 @@ import { ProductService } from '../services/product.service';
       .empty {
         text-align: center;
         padding: 40px;
-        color: #999;
+        color: var(--text, #999);
       }
 
       .cards-grid {

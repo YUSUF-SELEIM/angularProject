@@ -50,7 +50,6 @@ import type { Product } from '../services/product.service';
   styles: [
     `
       .card {
-        background: white;
         border-radius: 8px;
         overflow: hidden;
         transition: all 0.3s ease;
@@ -111,7 +110,7 @@ import type { Product } from '../services/product.service';
         font-size: 16px;
         font-weight: 600;
         margin: 0 0 8px 0;
-        color: #333;
+        color: var(--color);
         flex: 1;
         padding-right: 8px;
       }
@@ -137,22 +136,22 @@ import type { Product } from '../services/product.service';
       }
       .rating-value {
         font-weight: 600;
-        color: #333;
+        color: var(--color);
       }
       .rating-count {
-        color: #999;
+        color: var(--text, #999);
       }
 
       .card-category {
         font-size: 12px;
-        color: #999;
+        color: var(--text, #999);
         text-transform: capitalize;
         margin: 0 0 8px 0;
       }
 
       .card-description {
         font-size: 14px;
-        color: #666;
+        color: var(--text, #666);
         margin: 0 0 12px 0;
         flex: 1;
         cursor: pointer;
@@ -163,7 +162,7 @@ import type { Product } from '../services/product.service';
           color: #333;
         }
         &.expanded {
-          color: #2c3e50;
+          color: var(--color);
         }
       }
 
@@ -177,7 +176,7 @@ import type { Product } from '../services/product.service';
       .card-price {
         font-size: 18px;
         font-weight: 700;
-        color: #2c3e50;
+        color: var(--color);
       }
 
       .view-link {

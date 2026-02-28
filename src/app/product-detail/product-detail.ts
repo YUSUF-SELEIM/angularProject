@@ -159,7 +159,6 @@ import { ButtonComponent } from '../button/button';
       }
 
       .image-wrapper {
-        background: #f5f5f5;
         border-radius: 12px;
         overflow: hidden;
         display: flex;
@@ -207,7 +206,7 @@ import { ButtonComponent } from '../button/button';
       .title {
         font-size: 26px;
         font-weight: 700;
-        color: #2c3e50;
+        color: var(--color);
         margin: 0 0 12px;
         line-height: 1.3;
       }
@@ -231,7 +230,7 @@ import { ButtonComponent } from '../button/button';
 
       .description {
         font-size: 15px;
-        color: #555;
+        color: var(--color);
         line-height: 1.6;
         margin-bottom: 24px;
       }
@@ -263,7 +262,7 @@ import { ButtonComponent } from '../button/button';
 
       .qty-label {
         font-weight: 600;
-        color: #333;
+        color: var(--color);
       }
 
       .stepper {
@@ -279,7 +278,6 @@ import { ButtonComponent } from '../button/button';
         width: 36px;
         height: 36px;
         border: none;
-        background: #f9f9f9;
         font-size: 20px;
         cursor: pointer;
         transition: background 0.2s;
@@ -299,13 +297,13 @@ import { ButtonComponent } from '../button/button';
         text-align: center;
         font-size: 16px;
         font-weight: 700;
-        color: #333;
+        color: var(--color);
       }
 
       .success-msg {
         margin-top: 16px;
         padding: 12px 16px;
-        background: #e8f5e9;
+        background: var(--success-bg, #e8f5e9);
         color: #2e7d32;
         border-radius: 8px;
         font-weight: 600;
