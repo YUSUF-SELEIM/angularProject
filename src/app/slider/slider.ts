@@ -1,8 +1,9 @@
 import { Component, OnInit, OnDestroy, NgZone, ChangeDetectorRef, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 
 interface SliderProduct {
-  id: number;
+  id: string;
   title: string;
   price: number;
   description: string;
@@ -37,6 +38,7 @@ export class Slider implements OnInit, OnDestroy {
   constructor(
     private ngZone: NgZone,
     private cdr: ChangeDetectorRef,
+    private http: HttpClient,
   ) {}
 
   ngOnInit() {
@@ -45,17 +47,52 @@ export class Slider implements OnInit, OnDestroy {
   }
 
   private fetchSliderProducts(): void {
-    fetch('https://fakestoreapi.com/products?limit=10')
-      .then((response) => response.json())
-      .then((data: SliderProduct[]) => {
+    this.http.get<any>('http://localhost:3000/api/products?page=1&limit=10').subscribe({
+      next: (res) => {
+        const rawList = this.extractProducts(res);
+        const data: SliderProduct[] = rawList.map((p: any) => this.normalizeSliderProduct(p));
         this.products.set(data);
         if (data.length > 0) {
           this.startAutoSlide();
         }
-      })
-      .catch((error) => {
+      },
+      error: (error) => {
         console.error('Error fetching slider products:', error);
-      });
+      },
+    });
+  }
+
+  private extractProducts(res: any): any[] {
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res?.data)) return res.data;
+    if (Array.isArray(res?.products)) return res.products;
+    if (Array.isArray(res?.data?.products)) return res.data.products;
+    return [];
+  }
+
+  private normalizeSliderProduct(raw: any): SliderProduct {
+    const firstImage = Array.isArray(raw?.photos)
+      ? raw.photos[0]
+      : Array.isArray(raw?.images)
+        ? raw.images[0]
+        : (raw?.imageURL ?? raw?.image ?? raw?.thumbnail ?? '');
+    const category =
+      typeof raw?.category === 'string'
+        ? raw.category
+        : (raw?.category?.name ?? raw?.category?._id ?? 'general');
+
+    return {
+      id: String(raw?._id ?? raw?.id ?? crypto.randomUUID()),
+      title: String(raw?.title ?? 'Product'),
+      price: Number(raw?.price ?? 0),
+      description: String(raw?.description ?? ''),
+      category,
+      image: String(firstImage),
+      rating: {
+        rate: Number(raw?.rating?.rate ?? raw?.averageRating ?? 0),
+        count: Number(raw?.rating?.count ?? raw?.ratingCount ?? 0),
+      },
+    };
   }
 
   startAutoSlide() {

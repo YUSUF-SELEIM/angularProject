@@ -88,6 +88,16 @@ import { ButtonComponent } from '../button/button';
               (onClick)="handleOrder()"
             />
 
+            @if (canBuy()) {
+              <a
+                class="checkout-link"
+                [routerLink]="['/checkout']"
+                [queryParams]="{ mode: 'single', productId: product()!.id, quantity: orderQty() }"
+              >
+                Buy Now (Checkout)
+              </a>
+            }
+
             @if (ordered()) {
               <div class="success-msg">
                 ✅ {{ lastOrderQty() }} × {{ product()!.title }} added to cart!
@@ -319,6 +329,17 @@ import { ButtonComponent } from '../button/button';
           opacity: 1;
         }
       }
+
+      .checkout-link {
+        display: inline-block;
+        margin-top: 12px;
+        color: #6c63ff;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      .checkout-link:hover {
+        text-decoration: underline;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -327,8 +348,8 @@ export class ProductDetailComponent {
   protected svc = inject(ProductService);
   private route = inject(ActivatedRoute);
 
-  private idParam = toSignal(this.route.paramMap.pipe(map((p) => Number(p.get('id')))), {
-    initialValue: 0,
+  private idParam = toSignal(this.route.paramMap.pipe(map((p) => p.get('id') ?? '')), {
+    initialValue: '',
   });
 
   protected product = computed(() => this.svc.getProductById(this.idParam()));

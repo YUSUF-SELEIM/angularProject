@@ -365,7 +365,7 @@ export class DashboardComponent {
   svc = inject(ProductService);
 
   showModal = signal(false);
-  editingId = signal<number | null>(null);
+  editingId = signal<string | null>(null);
   deleteTarget = signal<Product | null>(null);
 
   form = new FormGroup({

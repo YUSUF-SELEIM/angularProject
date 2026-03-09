@@ -5,23 +5,31 @@ import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angula
 import { AuthService } from '../services/auth.service';
 
 @Component({
-  selector: 'app-login',
+  selector: 'app-register',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterLink],
   template: `
-    <div class="login-page">
-      <div class="login-card">
-        <h1>Shop Login</h1>
+    <div class="register-page">
+      <div class="register-card">
+        <h1>Create Account</h1>
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
           <div class="field">
-            <label for="username">Email</label>
+            <label for="name">Name</label>
+            <input id="name" formControlName="name" placeholder="Your name" autocomplete="name" />
+            @if (f['name'].invalid && f['name'].touched) {
+              <span class="error">Name must be at least 3 characters.</span>
+            }
+          </div>
+
+          <div class="field">
+            <label for="email">Email</label>
             <input
-              id="username"
-              formControlName="username"
+              id="email"
+              formControlName="email"
               placeholder="name@example.com"
-              autocomplete="username"
+              autocomplete="email"
             />
-            @if (f['username'].invalid && f['username'].touched) {
+            @if (f['email'].invalid && f['email'].touched) {
               <span class="error">Please enter a valid email.</span>
             }
           </div>
@@ -32,31 +40,45 @@ import { AuthService } from '../services/auth.service';
               id="password"
               type="password"
               formControlName="password"
-              placeholder="Password"
-              autocomplete="current-password"
+              placeholder="At least 6 characters"
+              autocomplete="new-password"
             />
             @if (f['password'].invalid && f['password'].touched) {
-              <span class="error">Password is required.</span>
+              <span class="error">Password must be at least 6 characters.</span>
             }
           </div>
 
-          @if (loginError()) {
-            <div class="login-error">Invalid username or password.</div>
+          <div class="field">
+            <label for="confirmPassword">Confirm Password</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              formControlName="confirmPassword"
+              placeholder="Retype your password"
+              autocomplete="new-password"
+            />
+            @if (f['confirmPassword'].invalid && f['confirmPassword'].touched) {
+              <span class="error">Please confirm your password.</span>
+            }
+          </div>
+
+          @if (errorMessage()) {
+            <div class="register-error">{{ errorMessage() }}</div>
           }
 
           <button type="submit" class="btn-primary" [disabled]="form.invalid || isSubmitting()">
-            {{ isSubmitting() ? 'Logging in...' : 'Login' }}
+            {{ isSubmitting() ? 'Creating account...' : 'Register' }}
           </button>
         </form>
 
-        <a class="back" routerLink="/register">Create new account</a>
-        <a class="back" routerLink="/">← Back to shop</a>
+        <a class="switch" routerLink="/login">Already have an account? Login</a>
+        <a class="back" routerLink="/">Back to shop</a>
       </div>
     </div>
   `,
   styles: [
     `
-      .login-page {
+      .register-page {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -64,29 +86,24 @@ import { AuthService } from '../services/auth.service';
         padding: 20px;
         background: var(--bg, #f5f5f5);
       }
-      .login-card {
+      .register-card {
         background: var(--card-bg, white);
         color: var(--text, #111);
-        padding: 40px;
+        padding: 36px;
         border-radius: 16px;
         box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
         width: 100%;
-        max-width: 400px;
+        max-width: 420px;
       }
       h1 {
-        margin: 0 0 6px;
+        margin: 0 0 14px;
         font-size: 24px;
-      }
-      .hint {
-        font-size: 13px;
-        color: #888;
-        margin-bottom: 24px;
       }
       .field {
         display: flex;
         flex-direction: column;
         gap: 6px;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
       }
       label {
         font-size: 14px;
@@ -100,7 +117,6 @@ import { AuthService } from '../services/auth.service';
         background: var(--input-bg, white);
         color: var(--text, #111);
         outline: none;
-        transition: border-color 0.2s;
       }
       input:focus {
         border-color: #6c63ff;
@@ -109,7 +125,7 @@ import { AuthService } from '../services/auth.service';
         font-size: 12px;
         color: #e53935;
       }
-      .login-error {
+      .register-error {
         background: #fdecea;
         color: #c62828;
         padding: 10px 14px;
@@ -127,7 +143,6 @@ import { AuthService } from '../services/auth.service';
         font-size: 16px;
         font-weight: 700;
         cursor: pointer;
-        transition: background 0.2s;
       }
       .btn-primary:hover:not(:disabled) {
         background: #574fd6;
@@ -136,29 +151,31 @@ import { AuthService } from '../services/auth.service';
         opacity: 0.5;
         cursor: not-allowed;
       }
+      .switch,
       .back {
         display: block;
         text-align: center;
-        margin-top: 20px;
         color: #888;
         font-size: 14px;
+        margin-top: 14px;
       }
     `,
   ],
 })
-export class LoginComponent {
+export class RegisterComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
 
-  loginError = signal(false);
   isSubmitting = signal(false);
+  errorMessage = signal<string | null>(null);
 
   form = new FormGroup({
-    username: new FormControl('', [Validators.required, Validators.email]),
-    password: new FormControl('', [Validators.required]),
+    name: new FormControl('', [Validators.required, Validators.minLength(3)]),
+    email: new FormControl('', [Validators.required, Validators.email]),
+    password: new FormControl('', [Validators.required, Validators.minLength(6)]),
+    confirmPassword: new FormControl('', [Validators.required]),
   });
 
-  // f is a shorthand to access controls — avoids verbose form.controls['name'] everywhere
   get f() {
     return this.form.controls;
   }
@@ -169,18 +186,23 @@ export class LoginComponent {
       return;
     }
 
-    const { username, password } = this.form.value;
-    this.loginError.set(false);
+    const { name, email, password, confirmPassword } = this.form.value;
+    if (password !== confirmPassword) {
+      this.errorMessage.set('Password and confirm password do not match.');
+      return;
+    }
+
+    this.errorMessage.set(null);
     this.isSubmitting.set(true);
 
-    this.auth.login(username!, password!).subscribe((ok) => {
+    this.auth.register(name!, email!, password!).subscribe((result) => {
       this.isSubmitting.set(false);
 
-      if (ok) {
+      if (result.ok) {
         const dest = this.auth.isAdmin() ? '/dashboard' : '/';
         this.router.navigateByUrl(dest);
       } else {
-        this.loginError.set(true);
+        this.errorMessage.set(result.message ?? 'Registration failed.');
       }
     });
   }

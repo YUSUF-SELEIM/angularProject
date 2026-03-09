@@ -5,7 +5,7 @@ import { HttpClient } from '@angular/common/http';
   providedIn: 'root',
 })
 export class Product {
-  private api = 'https://api.escuelajs.co/api/v1/products/?categoryId=2';
+  private api = 'http://localhost:3000/api/products?page=1&limit=10';
 
   constructor(private http: HttpClient) {}
 

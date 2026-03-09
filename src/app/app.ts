@@ -18,6 +18,11 @@ import { ThemeService } from './services/theme.service';
           Home
         </a>
 
+        @if (auth.isLoggedIn()) {
+          <a routerLink="/cart" routerLinkActive="active">Cart</a>
+          <a routerLink="/orders" routerLinkActive="active">Orders</a>
+        }
+
         @if (auth.isAdmin()) {
           <a routerLink="/dashboard" routerLinkActive="active" class="admin-btn">Dashboard</a>
           <a routerLink="/products/add" routerLinkActive="active" class="add-btn">+ Add Product</a>
@@ -25,10 +30,10 @@ import { ThemeService } from './services/theme.service';
       </div>
 
       @if (svc.cartItemCount() > 0) {
-        <div class="cart-badge">
+        <a class="cart-badge" routerLink="/cart" routerLinkActive="active">
           {{ svc.cartItemCount() }} items
           <span class="cart-total">\${{ svc.cartTotal() }}</span>
-        </div>
+        </a>
       }
 
       <div class="right-actions">
@@ -47,6 +52,7 @@ import { ThemeService } from './services/theme.service';
           </span>
           <button class="btn-logout" (click)="auth.logout()">Logout</button>
         } @else {
+          <a routerLink="/register" class="btn-register">Register</a>
           <a routerLink="/login" class="btn-login">Login</a>
         }
       </div>
@@ -221,6 +227,20 @@ import { ThemeService } from './services/theme.service';
       }
       .btn-login:hover {
         background: #574fd6;
+      }
+
+      .btn-register {
+        padding: 7px 16px;
+        background: #e8f5e9;
+        color: #2e7d32;
+        border-radius: 20px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .btn-register:hover {
+        background: #c8e6c9;
       }
 
       main {
