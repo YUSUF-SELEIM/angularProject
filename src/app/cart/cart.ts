@@ -286,16 +286,19 @@ export class CartComponent implements OnInit {
 
   private resolveProductImage(rawProduct: any): string {
     if (Array.isArray(rawProduct?.photos) && rawProduct.photos.length > 0) {
-      return String(rawProduct.photos[0]);
+      const photo = String(rawProduct.photos[0]);
+      // Skip mangled URLs: backend prefixed an already-full URL
+      if (!/\/uploads\/https?:/.test(photo)) {
+        return photo;
+      }
     }
 
     if (Array.isArray(rawProduct?.images) && rawProduct.images.length > 0) {
-      const firstImage = String(rawProduct.images[0] ?? '');
-      if (firstImage.startsWith('http://') || firstImage.startsWith('https://')) {
-        return firstImage;
+      const img = String(rawProduct.images[0] ?? '');
+      if (img.startsWith('http://') || img.startsWith('https://')) {
+        return img;
       }
-
-      return firstImage ? `http://localhost:3000/uploads/${firstImage}` : '';
+      return img ? `http://localhost:3000/uploads/${img}` : '';
     }
 
     return String(rawProduct?.imageURL ?? rawProduct?.image ?? rawProduct?.thumbnail ?? '');

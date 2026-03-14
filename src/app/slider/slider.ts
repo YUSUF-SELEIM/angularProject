@@ -77,11 +77,7 @@ export class Slider implements OnInit, OnDestroy {
         ? raw.rating
         : Number(raw?.rating?.rate ?? raw?.averageRating ?? 0);
 
-    const firstImage = Array.isArray(raw?.photos)
-      ? raw.photos[0]
-      : Array.isArray(raw?.images)
-        ? raw.images[0]
-        : (raw?.imageURL ?? raw?.image ?? raw?.thumbnail ?? '');
+    const firstImage = this.resolveImage(raw);
     const category =
       typeof raw?.category === 'string'
         ? raw.category
@@ -153,5 +149,24 @@ export class Slider implements OnInit, OnDestroy {
     if (this.intervalId) {
       clearInterval(this.intervalId);
     }
+  }
+
+  private resolveImage(raw: any): string {
+    if (Array.isArray(raw?.photos) && raw.photos.length > 0) {
+      const photo = String(raw.photos[0]);
+      if (!/\/uploads\/https?:/.test(photo)) {
+        return photo;
+      }
+    }
+
+    if (Array.isArray(raw?.images) && raw.images.length > 0) {
+      const img = String(raw.images[0] ?? '');
+      if (img.startsWith('http://') || img.startsWith('https://')) {
+        return img;
+      }
+      return img ? `http://localhost:3000/uploads/${img}` : '';
+    }
+
+    return String(raw?.imageURL ?? raw?.image ?? raw?.thumbnail ?? '');
   }
 }

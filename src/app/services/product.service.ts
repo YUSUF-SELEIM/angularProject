@@ -250,6 +250,28 @@ export class ProductService {
     return res?.data ?? res?.product ?? res ?? null;
   }
 
+  private resolveImage(raw: any): string {
+    // Backend photos virtual always prepends /uploads/ — detect mangled URLs
+    // e.g. http://localhost:3000/uploads/https://external.com/img.jpg
+    if (Array.isArray(raw?.photos) && raw.photos.length > 0) {
+      const photo = String(raw.photos[0]);
+      if (!/\/uploads\/https?:/.test(photo)) {
+        return photo;
+      }
+    }
+
+    // Fall back to raw images[]
+    if (Array.isArray(raw?.images) && raw.images.length > 0) {
+      const img = String(raw.images[0] ?? '');
+      if (img.startsWith('http://') || img.startsWith('https://')) {
+        return img;
+      }
+      return img ? `http://localhost:3000/uploads/${img}` : '';
+    }
+
+    return String(raw?.imageURL ?? raw?.image ?? raw?.thumbnail ?? '');
+  }
+
   private normalizeProduct(raw: any): Product {
     const categoryValue =
       typeof raw?.category === 'string'
@@ -261,11 +283,7 @@ export class ProductService {
         ? raw.rating
         : Number(raw?.rating?.rate ?? raw?.averageRating ?? 0);
 
-    const firstImage = Array.isArray(raw?.photos)
-      ? raw.photos[0]
-      : Array.isArray(raw?.images)
-        ? raw.images[0]
-        : (raw?.imageURL ?? raw?.image ?? raw?.thumbnail ?? '');
+    const firstImage = this.resolveImage(raw);
 
     return {
       id: String(raw?._id ?? raw?.id ?? crypto.randomUUID()),
@@ -279,7 +297,7 @@ export class ProductService {
       category: categoryValue,
       categoryId: raw?.category?._id ? String(raw.category._id) : null,
       categorySlug: raw?.category?.slug ? String(raw.category.slug) : null,
-      image: String(firstImage),
+      image: firstImage,
       quantity: Number(raw?.stock ?? raw?.quantity ?? 0),
       sellerId: raw?.seller?._id ? String(raw.seller._id) : null,
       sellerName: raw?.seller?.name ? String(raw.seller.name) : null,

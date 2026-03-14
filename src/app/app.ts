@@ -17,6 +17,7 @@ import { ThemeService } from './services/theme.service';
         <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
           Home
         </a>
+        <a routerLink="/products" routerLinkActive="active">Products</a>
 
         @if (auth.isLoggedIn()) {
           <a routerLink="/cart" routerLinkActive="active">Cart</a>
