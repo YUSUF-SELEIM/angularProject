@@ -1,15 +1,41 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Observable, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
 export interface Product {
   id: string;
+  title: string;
+  price: number;
+  discountPrice: number | null;
+  description: string;
+  category: string;
+  categoryId: string | null;
+  categorySlug: string | null;
+  image: string;
+  quantity: number;
+  sellerId: string | null;
+  sellerName: string | null;
+  tags: string[];
+  isActive: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
+  rating: { rate: number; count: number };
+}
+
+export interface ProductMutationResult {
+  ok: boolean;
+  message?: string;
+  product?: Product;
+}
+
+export interface ProductUpsertInput {
   title: string;
   price: number;
   description: string;
   category: string;
   image: string;
   quantity: number;
-  rating: { rate: number; count: number };
 }
 
 const API_BASE = 'http://localhost:3000/api';
@@ -61,28 +87,28 @@ export class ProductService {
     return this._products().find((p) => p.id === id);
   }
 
-  addProduct(data: Omit<Product, 'id' | 'rating'>): void {
-    this.http.post<any>(PRODUCTS_API, data, { headers: this.authHeaders() }).subscribe({
-      next: (res) => {
+  addProduct(data: ProductUpsertInput): Observable<ProductMutationResult> {
+    const payload = this.toCreatePayload(data);
+
+    return this.http.post<any>(PRODUCTS_API, payload, { headers: this.authHeaders() }).pipe(
+      map((res) => {
         const created = this.extractSingleProduct(res);
-        const newProduct: Product = created
-          ? this.normalizeProduct(created)
-          : this.normalizeProduct(data);
-        this._products.update((ps) => [newProduct, ...ps]);
-      },
-      error: (err) => {
-        console.warn('POST failed, adding locally', err);
-        const newProduct: Product = {
-          ...data,
-          id: crypto.randomUUID(),
-          rating: { rate: 0, count: 0 },
-        };
-        this._products.update((ps) => [newProduct, ...ps]);
-      },
-    });
+
+        if (created && (created._id || created.id || created.title)) {
+          const newProduct = this.normalizeProduct(created);
+          this._products.update((ps) => [newProduct, ...ps]);
+          return { ok: true, product: newProduct };
+        }
+
+        // Some APIs return success metadata only; refresh list to pull server state.
+        this.fetchProducts();
+        return { ok: true };
+      }),
+      catchError((err) => of({ ok: false, message: this.extractApiErrorMessage(err) })),
+    );
   }
 
-  updateProduct(id: string, data: Partial<Omit<Product, 'id' | 'rating'>>): void {
+  updateProduct(id: string, data: Partial<ProductUpsertInput>): void {
     this.http.patch<any>(`${PRODUCTS_API}/${id}`, data, { headers: this.authHeaders() }).subscribe({
       next: (res) => {
         const updated = this.extractSingleProduct(res);
@@ -174,8 +200,41 @@ export class ProductService {
   }
 
   private authHeaders(): HttpHeaders {
-    const token = sessionStorage.getItem('auth_token') ?? '';
+    const token =
+      sessionStorage.getItem('auth_token') ??
+      sessionStorage.getItem('admin_token') ??
+      sessionStorage.getItem('seller_token') ??
+      sessionStorage.getItem('token') ??
+      '';
     return new HttpHeaders({ Authorization: `Bearer ${token}` });
+  }
+
+  private toCreatePayload(data: ProductUpsertInput): Record<string, unknown> {
+    const image = String(data.image ?? '').trim();
+    const quantity = Number(data.quantity ?? 0);
+
+    return {
+      title: String(data.title ?? '').trim(),
+      description: String(data.description ?? '').trim(),
+      price: Number(data.price ?? 0),
+      stock: quantity,
+      category: String(data.category ?? '').trim(),
+      images: image ? [image] : [],
+    };
+  }
+
+  private extractApiErrorMessage(err: any): string {
+    const status = Number(err?.status ?? 0);
+    if (status === 403) {
+      return 'Forbidden (403): this account cannot create products. Use an authorized seller/admin account.';
+    }
+
+    return (
+      err?.error?.data?.message ??
+      err?.error?.message ??
+      err?.message ??
+      'Failed to add product. Please check your admin login and input values.'
+    );
   }
 
   private extractProductsFromResponse(res: any): any[] {
@@ -197,6 +256,11 @@ export class ProductService {
         ? raw.category
         : (raw?.category?.name ?? raw?.category?._id ?? 'general');
 
+    const ratingValue =
+      typeof raw?.rating === 'number'
+        ? raw.rating
+        : Number(raw?.rating?.rate ?? raw?.averageRating ?? 0);
+
     const firstImage = Array.isArray(raw?.photos)
       ? raw.photos[0]
       : Array.isArray(raw?.images)
@@ -207,13 +271,25 @@ export class ProductService {
       id: String(raw?._id ?? raw?.id ?? crypto.randomUUID()),
       title: String(raw?.title ?? 'Untitled Product'),
       price: Number(raw?.price ?? 0),
+      discountPrice:
+        raw?.discountPrice === null || raw?.discountPrice === undefined
+          ? null
+          : Number(raw.discountPrice),
       description: String(raw?.description ?? ''),
       category: categoryValue,
+      categoryId: raw?.category?._id ? String(raw.category._id) : null,
+      categorySlug: raw?.category?.slug ? String(raw.category.slug) : null,
       image: String(firstImage),
       quantity: Number(raw?.stock ?? raw?.quantity ?? 0),
+      sellerId: raw?.seller?._id ? String(raw.seller._id) : null,
+      sellerName: raw?.seller?.name ? String(raw.seller.name) : null,
+      tags: Array.isArray(raw?.tags) ? raw.tags.map((tag: unknown) => String(tag)) : [],
+      isActive: Boolean(raw?.isActive ?? true),
+      createdAt: raw?.createdAt ? String(raw.createdAt) : null,
+      updatedAt: raw?.updatedAt ? String(raw.updatedAt) : null,
       rating: {
-        rate: Number(raw?.rating?.rate ?? raw?.averageRating ?? 0),
-        count: Number(raw?.rating?.count ?? raw?.ratingCount ?? 0),
+        rate: Number(ratingValue),
+        count: Number(raw?.ratingCount ?? raw?.reviewsCount ?? raw?.reviewCount ?? 0),
       },
     };
   }

@@ -1,8 +1,14 @@
-import { Component, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { ProductService } from '../services/product.service';
+import { ElvoraApiService } from '../services/elvora-api.service';
+
+interface CategoryOption {
+  id: string;
+  name: string;
+}
 
 @Component({
   selector: 'app-add-product',
@@ -64,14 +70,17 @@ import { ProductService } from '../services/product.service';
 
         <div class="field">
           <label for="category">Category *</label>
-          <input
-            id="category"
-            type="text"
-            formControlName="category"
-            placeholder="e.g. electronics"
-          />
+          <select id="category" formControlName="category">
+            <option value="" disabled>Select category</option>
+            @for (c of categories(); track c.id) {
+              <option [value]="c.id">{{ c.name }}</option>
+            }
+          </select>
           @if (f['category'].invalid && f['category'].touched) {
             <span class="error">Category is required.</span>
+          }
+          @if (categoriesError()) {
+            <span class="error">{{ categoriesError() }}</span>
           }
         </div>
 
@@ -100,9 +109,15 @@ import { ProductService } from '../services/product.service';
         </div>
 
         <div class="actions">
-          <button type="submit" class="btn-submit" [disabled]="form.invalid">Add Product</button>
+          <button type="submit" class="btn-submit" [disabled]="form.invalid || isSubmitting()">
+            {{ isSubmitting() ? 'Saving...' : 'Add Product' }}
+          </button>
           <a routerLink="/" class="btn-cancel">Cancel</a>
         </div>
+
+        @if (submitError()) {
+          <p class="submit-error">{{ submitError() }}</p>
+        }
       </form>
     </div>
   `,
@@ -158,6 +173,7 @@ import { ProductService } from '../services/product.service';
       }
 
       input,
+      select,
       textarea {
         padding: 10px 14px;
         border: 2px solid #e0e0e0;
@@ -175,6 +191,7 @@ import { ProductService } from '../services/product.service';
 
       /* Red border when invalid and touched */
       input.ng-invalid.ng-touched,
+      select.ng-invalid.ng-touched,
       textarea.ng-invalid.ng-touched {
         border-color: #e53935;
       }
@@ -236,13 +253,26 @@ import { ProductService } from '../services/product.service';
           background: #f5f5f5;
         }
       }
+
+      .submit-error {
+        margin: 0;
+        color: #c62828;
+        font-size: 13px;
+        font-weight: 600;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AddProductComponent {
   private svc = inject(ProductService);
+  private api = inject(ElvoraApiService);
   private router = inject(Router);
+
+  isSubmitting = signal(false);
+  submitError = signal<string | null>(null);
+  categories = signal<CategoryOption[]>([]);
+  categoriesError = signal<string | null>(null);
 
   form = new FormGroup({
     title: new FormControl('', [Validators.required, Validators.minLength(3)]),
@@ -257,6 +287,41 @@ export class AddProductComponent {
     return this.form.controls;
   }
 
+  constructor() {
+    this.loadCategories();
+  }
+
+  private loadCategories(): void {
+    this.categoriesError.set(null);
+    this.api.getCategories().subscribe({
+      next: (res: any) => {
+        const list = this.extractCategories(res);
+        this.categories.set(list);
+        if (list.length === 0) {
+          this.categoriesError.set('No categories found. Please create categories first.');
+        }
+      },
+      error: () => {
+        this.categories.set([]);
+        this.categoriesError.set('Could not load categories.');
+      },
+    });
+  }
+
+  private extractCategories(res: any): CategoryOption[] {
+    const candidates = [res?.data?.categories, res?.data, res?.categories, res].find((x) =>
+      Array.isArray(x),
+    );
+    const raw = Array.isArray(candidates) ? candidates : [];
+
+    return raw
+      .map((item: any) => ({
+        id: String(item?._id ?? item?.id ?? ''),
+        name: String(item?.name ?? item?.title ?? '').trim(),
+      }))
+      .filter((item: CategoryOption) => item.id.length > 0 && item.name.length > 0);
+  }
+
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -264,15 +329,27 @@ export class AddProductComponent {
     }
 
     const v = this.form.value;
-    this.svc.addProduct({
-      title: v.title!,
-      price: v.price!,
-      quantity: v.quantity!,
-      category: v.category!,
-      image: v.image!,
-      description: v.description!,
-    });
+    this.submitError.set(null);
+    this.isSubmitting.set(true);
 
-    this.router.navigate(['/']);
+    this.svc
+      .addProduct({
+        title: v.title!,
+        price: v.price!,
+        quantity: v.quantity!,
+        category: v.category!,
+        image: v.image!,
+        description: v.description!,
+      })
+      .subscribe((result) => {
+        this.isSubmitting.set(false);
+
+        if (result.ok) {
+          this.router.navigate(['/dashboard']);
+          return;
+        }
+
+        this.submitError.set(result.message ?? 'Could not add product.');
+      });
   }
 }

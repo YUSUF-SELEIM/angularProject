@@ -333,6 +333,7 @@ import { ButtonComponent } from '../button/button';
       .checkout-link {
         display: inline-block;
         margin-top: 12px;
+        margin-left: 8px;
         color: #6c63ff;
         text-decoration: none;
         font-weight: 600;

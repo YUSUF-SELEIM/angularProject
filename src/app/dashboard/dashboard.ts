@@ -2,6 +2,12 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { ProductService, Product } from '../services/product.service';
+import { ElvoraApiService } from '../services/elvora-api.service';
+
+interface CategoryOption {
+  id: string;
+  name: string;
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -92,9 +98,17 @@ import { ProductService, Product } from '../services/product.service';
 
               <div class="field">
                 <label>Category *</label>
-                <input formControlName="category" placeholder="e.g. electronics" />
+                <select formControlName="category">
+                  <option value="" disabled>Select category</option>
+                  @for (c of categories(); track c.id) {
+                    <option [value]="c.id">{{ c.name }}</option>
+                  }
+                </select>
                 @if (f['category'].invalid && f['category'].touched) {
                   <span class="err">Category required.</span>
+                }
+                @if (categoriesError()) {
+                  <span class="err">{{ categoriesError() }}</span>
                 }
               </div>
 
@@ -116,10 +130,14 @@ import { ProductService, Product } from '../services/product.service';
 
               <div class="modal-footer">
                 <button type="button" class="btn-cancel" (click)="closeModal()">Cancel</button>
-                <button type="submit" class="btn-save">
-                  {{ editingId() ? 'Save Changes' : 'Create' }}
+                <button type="submit" class="btn-save" [disabled]="form.invalid || isSaving()">
+                  {{ isSaving() ? 'Saving...' : editingId() ? 'Save Changes' : 'Create' }}
                 </button>
               </div>
+
+              @if (submitError()) {
+                <p class="submit-error">{{ submitError() }}</p>
+              }
             </form>
           </div>
         </div>
@@ -306,6 +324,7 @@ import { ProductService, Product } from '../services/product.service';
         font-weight: 600;
       }
       .field input,
+      .field select,
       .field textarea {
         padding: 9px 12px;
         border: 1.5px solid var(--border, #e0e0e0);
@@ -358,15 +377,27 @@ import { ProductService, Product } from '../services/product.service';
         color: #555;
         margin: 0 0 20px;
       }
+
+      .submit-error {
+        margin: 10px 0 0;
+        color: #c62828;
+        font-size: 13px;
+        font-weight: 600;
+      }
     `,
   ],
 })
 export class DashboardComponent {
   svc = inject(ProductService);
+  private api = inject(ElvoraApiService);
 
   showModal = signal(false);
   editingId = signal<string | null>(null);
   deleteTarget = signal<Product | null>(null);
+  isSaving = signal(false);
+  submitError = signal<string | null>(null);
+  categories = signal<CategoryOption[]>([]);
+  categoriesError = signal<string | null>(null);
 
   form = new FormGroup({
     title: new FormControl('', [Validators.required, Validators.minLength(3)]),
@@ -381,6 +412,41 @@ export class DashboardComponent {
     return this.form.controls;
   }
 
+  constructor() {
+    this.loadCategories();
+  }
+
+  private loadCategories(): void {
+    this.categoriesError.set(null);
+    this.api.getCategories().subscribe({
+      next: (res: any) => {
+        const list = this.extractCategories(res);
+        this.categories.set(list);
+        if (list.length === 0) {
+          this.categoriesError.set('No categories found. Please create categories first.');
+        }
+      },
+      error: () => {
+        this.categories.set([]);
+        this.categoriesError.set('Could not load categories.');
+      },
+    });
+  }
+
+  private extractCategories(res: any): CategoryOption[] {
+    const candidates = [res?.data?.categories, res?.data, res?.categories, res].find((x) =>
+      Array.isArray(x),
+    );
+    const raw = Array.isArray(candidates) ? candidates : [];
+
+    return raw
+      .map((item: any) => ({
+        id: String(item?._id ?? item?.id ?? ''),
+        name: String(item?.name ?? item?.title ?? '').trim(),
+      }))
+      .filter((item: CategoryOption) => item.id.length > 0 && item.name.length > 0);
+  }
+
   stockClass(qty: number): string {
     if (qty <= 0) return 'stock-out';
     if (qty <= 2) return 'stock-low';
@@ -389,12 +455,16 @@ export class DashboardComponent {
 
   openAdd(): void {
     this.editingId.set(null);
+    this.submitError.set(null);
+    this.isSaving.set(false);
     this.form.reset();
     this.showModal.set(true);
   }
 
   openEdit(p: Product): void {
     this.editingId.set(p.id);
+    this.submitError.set(null);
+    this.isSaving.set(false);
     this.form.patchValue({
       title: p.title,
       price: p.price,
@@ -409,6 +479,8 @@ export class DashboardComponent {
   closeModal(): void {
     this.showModal.set(false);
     this.editingId.set(null);
+    this.submitError.set(null);
+    this.isSaving.set(false);
     this.form.reset();
   }
 
@@ -431,18 +503,31 @@ export class DashboardComponent {
         image: val.image,
         description: val.description,
       });
+      this.closeModal();
     } else {
       // POST — create new
-      this.svc.addProduct({
-        title: val.title,
-        price: val.price,
-        quantity: val.quantity,
-        category: val.category,
-        image: val.image,
-        description: val.description,
-      });
+      this.submitError.set(null);
+      this.isSaving.set(true);
+
+      this.svc
+        .addProduct({
+          title: val.title,
+          price: val.price,
+          quantity: val.quantity,
+          category: val.category,
+          image: val.image,
+          description: val.description,
+        })
+        .subscribe((result) => {
+          this.isSaving.set(false);
+          if (result.ok) {
+            this.closeModal();
+            return;
+          }
+
+          this.submitError.set(result.message ?? 'Failed to create product.');
+        });
     }
-    this.closeModal();
   }
 
   confirmDelete(p: Product): void {

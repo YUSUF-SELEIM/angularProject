@@ -6,6 +6,7 @@ interface SliderProduct {
   id: string;
   title: string;
   price: number;
+  discountPrice: number | null;
   description: string;
   category: string;
   image: string;
@@ -71,6 +72,11 @@ export class Slider implements OnInit, OnDestroy {
   }
 
   private normalizeSliderProduct(raw: any): SliderProduct {
+    const ratingValue =
+      typeof raw?.rating === 'number'
+        ? raw.rating
+        : Number(raw?.rating?.rate ?? raw?.averageRating ?? 0);
+
     const firstImage = Array.isArray(raw?.photos)
       ? raw.photos[0]
       : Array.isArray(raw?.images)
@@ -85,12 +91,16 @@ export class Slider implements OnInit, OnDestroy {
       id: String(raw?._id ?? raw?.id ?? crypto.randomUUID()),
       title: String(raw?.title ?? 'Product'),
       price: Number(raw?.price ?? 0),
+      discountPrice:
+        raw?.discountPrice === null || raw?.discountPrice === undefined
+          ? null
+          : Number(raw.discountPrice),
       description: String(raw?.description ?? ''),
       category,
       image: String(firstImage),
       rating: {
-        rate: Number(raw?.rating?.rate ?? raw?.averageRating ?? 0),
-        count: Number(raw?.rating?.count ?? raw?.ratingCount ?? 0),
+        rate: Number(ratingValue),
+        count: Number(raw?.ratingCount ?? raw?.reviewsCount ?? raw?.reviewCount ?? 0),
       },
     };
   }

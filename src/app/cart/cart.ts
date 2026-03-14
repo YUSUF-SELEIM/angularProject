@@ -8,6 +8,7 @@ interface CartProduct {
   title: string;
   image: string;
   price: number;
+  discountPrice: number | null;
   stock: number;
 }
 
@@ -259,13 +260,13 @@ export class CartComponent implements OnInit {
 
     return list.map((item: any) => {
       const rawProduct = item?.product ?? {};
-      const firstImage = Array.isArray(rawProduct?.photos)
-        ? rawProduct.photos[0]
-        : Array.isArray(rawProduct?.images)
-          ? rawProduct.images[0]
-          : (rawProduct?.imageURL ?? rawProduct?.image ?? rawProduct?.thumbnail ?? '');
-
-      const price = Number(item?.price ?? rawProduct?.discountPrice ?? rawProduct?.price ?? 0);
+      const firstImage = this.resolveProductImage(rawProduct);
+      const price = this.resolveProductPrice(item, rawProduct);
+      const basePrice = Number(rawProduct?.price ?? 0);
+      const discountPrice =
+        rawProduct?.discountPrice === null || rawProduct?.discountPrice === undefined
+          ? null
+          : Number(rawProduct.discountPrice);
 
       return {
         productId: String(rawProduct?._id ?? rawProduct?.id ?? item?.productId ?? ''),
@@ -275,10 +276,32 @@ export class CartComponent implements OnInit {
           id: String(rawProduct?._id ?? rawProduct?.id ?? ''),
           title: String(rawProduct?.title ?? rawProduct?.name ?? 'Product'),
           image: String(firstImage),
-          price: Number(rawProduct?.price ?? 0),
-          stock: Number(rawProduct?.stock ?? 0),
+          price: basePrice,
+          discountPrice,
+          stock: Number(rawProduct?.stock ?? rawProduct?.quantity ?? 0),
         },
       };
     });
+  }
+
+  private resolveProductImage(rawProduct: any): string {
+    if (Array.isArray(rawProduct?.photos) && rawProduct.photos.length > 0) {
+      return String(rawProduct.photos[0]);
+    }
+
+    if (Array.isArray(rawProduct?.images) && rawProduct.images.length > 0) {
+      const firstImage = String(rawProduct.images[0] ?? '');
+      if (firstImage.startsWith('http://') || firstImage.startsWith('https://')) {
+        return firstImage;
+      }
+
+      return firstImage ? `http://localhost:3000/uploads/${firstImage}` : '';
+    }
+
+    return String(rawProduct?.imageURL ?? rawProduct?.image ?? rawProduct?.thumbnail ?? '');
+  }
+
+  private resolveProductPrice(item: any, rawProduct: any): number {
+    return Number(item?.price ?? rawProduct?.discountPrice ?? rawProduct?.price ?? 0);
   }
 }
